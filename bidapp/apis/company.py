@@ -2,8 +2,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db import models
-from ..models import CompanyInfo, EmployeeInfo, Bid, BidRank
-from ..serializers import CompanyInfoSerializer, EmployeeInfoSerializer, BidSerializer, BidRankSerializer
+from ..models import CompanyInfo, EmployeeInfo, Bid, BidRank, WinnerBidInfo
+from ..serializers import CompanyInfoSerializer, EmployeeInfoSerializer, BidSerializer, BidRankSerializer, WinnerBidInfoSerializer
 
 
 @api_view(['GET'])
@@ -82,4 +82,42 @@ def company_wins(request):
     serializer = BidRankSerializer(wins, many=True)
 
     return Response({'results': serializer.data, 'count': total})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def company_achievements(request):
+    """获取公司全国业绩（winner_bid_info表）"""
+    corp_code = request.GET.get('corp_code', '').strip()
+    if not corp_code:
+        return Response({'results': [], 'count': 0})
+
+    # 查公司名称
+    try:
+        company = CompanyInfo.objects.get(corp_code=corp_code)
+        company_name = company.name
+    except CompanyInfo.DoesNotExist:
+        return Response({'results': [], 'count': 0})
+
+    page = int(request.GET.get('page', 1))
+    PAGE_SIZE = 20
+    # winner_bid_info表查公司中标业绩
+    achievements = WinnerBidInfo.objects.filter(bidder_name__icontains=company_name)
+    total = achievements.count()
+    achievements = achievements.order_by('-create_time')[(page-1)*PAGE_SIZE:page*PAGE_SIZE]
+    serializer = WinnerBidInfoSerializer(achievements, many=True)
+
+    return Response({'results': serializer.data, 'count': total})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def achievement_detail(request, pk):
+    """全国业绩详情（winner_bid_info表）"""
+    try:
+        achievement = WinnerBidInfo.objects.get(pk=pk)
+    except WinnerBidInfo.DoesNotExist:
+        return Response({'detail': 'Not found.'}, status=404)
+    serializer = WinnerBidInfoSerializer(achievement)
+    return Response(serializer.data)
 

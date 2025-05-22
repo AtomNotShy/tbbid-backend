@@ -164,3 +164,30 @@ class ExcelProcessing(models.Model):
         return f"{self.original_filename} ({self.created_at.strftime('%Y-%m-%d %H:%M')})"
 
 
+class WinnerBidInfo(models.Model):
+    project_name = models.CharField(max_length=255, verbose_name="项目名称")
+    company = models.ForeignKey(
+        CompanyInfo,
+        on_delete=models.CASCADE,
+        to_field='corp_code',
+        db_column='corp_code',
+        verbose_name="公司"
+    )
+    bidder_name = models.CharField(max_length=255, null=True, blank=True, verbose_name="中标单位名称")
+    area_code = models.CharField(max_length=50, null=True, blank=True, verbose_name="地区代码")
+    win_amt = models.FloatField(null=True, blank=True, verbose_name="中标金额")
+    create_time = models.DateTimeField(null=True, blank=True, verbose_name="创建时间")
+    tender_org_name = models.CharField(max_length=255, null=True, blank=True, verbose_name="招标单位")
+    tos = models.CharField(max_length=50, null=True, blank=True, verbose_name="类别")
+    url = models.URLField(max_length=500, null=True, blank=True, verbose_name="详情页URL")
+    notice_content = models.TextField(null=True, blank=True, verbose_name="公告内容")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'winner_bid_info'
+        verbose_name = '中标信息'
+        verbose_name_plural = '中标信息'
+        unique_together = ['company', 'project_name']
+
+    def __str__(self):
+        return f"{self.project_name} - {self.bidder_name}"
