@@ -71,12 +71,67 @@ bidapp/
    pip install -r requirements.txt
    ```
 
-2. 运行开发服务器:
+2. 测试开发服务器:
    ```
    python manage.py runserver
    ```
 
-## 开发说明
+## 开发环境配置
+1.  后端配置路径
+   ```
+   /etc/supervisor/conf.d/backend.conf
+   ```
+
+   ```
+   [program:backend]
+   directory=/home/tbbid/backend
+   command=/home/tbbid/backend/.venv/bin/gunicorn bidoptimizer.wsgi:application -b 127.0.0.1:8000
+   autostart=true
+   autorestart=true
+   stderr_logfile=/var/log/backend.err.log
+   stdout_logfile=/var/log/backend.out.log
+   user=root
+   ```
+
+2. nginx 配置
+
+   ```
+   /etc/nginx/sites-available/tbbid
+   ```
+   
+   ```
+   server {
+    listen 80;
+    server_name tbbid.top www.tbbid.top;
+
+    # ---------------- 前端配置 ----------------
+    root /home/tbbid/frontend;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # ---------------- 后端 API 配置 ----------------
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # ---------------- 静态/媒体文件配置（可选） ----------------
+    location /static/ {
+        alias /home/tbbid/backend/staticfiles/;
+    }
+
+    location /media/ {
+        alias /home/tbbid/backend/media/;
+    }
+}
+   ```
+
 
 - 添加新功能时，请遵循模块化结构，在相应的apis和urls目录下创建新文件
 - 工具函数应放在utils.py中，便于复用
