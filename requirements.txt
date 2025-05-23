@@ -6,3 +6,4 @@ psycopg2-binary==2.9.9
 
 djangorestframework~=3.16.0
 rest_framework_simplejwt
+gunicorn==23.0.0
