@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}竞价模拟{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h2>竞价模拟</h2>
+        <p>请输入其他公司报价范围及可能的数量.</p>
+        <form method="post" class="mt-4">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label">区间范围</label>
+                <div id="lists-container">
+                    <!-- Default row -->
+                    <div class="input-group mb-2">
+                        <input type="number" name="min[]" step="0.0001" min="0" max="1" class="form-control" placeholder="最小值" required>
+                        <input type="number" name="max[]" step="0.0001" min="0" max="1" class="form-control" placeholder="最大值" required>
+                        <input type="number" name="num[]" min="0" class="form-control" placeholder="数量" required>
+                        <button type="button" class="btn btn-danger remove-row">删除</button>
+                    </div>
+                </div>
+                <button type="button" id="add-row" class="btn btn-secondary mt-2">添加</button>
+                <div class="form-text">输入模拟的区间最小值和最大值以及数量，点击添加更多范围</div>
+            </div>
+            <div class="mb-3">
+                <label for="{{ form.m_value.id_for_label }}" class="form-label">可控数量</label>
+                {{ form.m_value }}
+                <input type="number" name="m_value" min="0" class="form-control" placeholder="数量" required>
+                <div class="form-text">{{ form.m_value.help_text }}</div>
+            </div>
+            <button type="submit" class="btn btn-primary">计算推荐值</button>
+        </form>
+        
+        {% if result %}
+        <div class="result-container mt-4">
+            <h3>计算结果</h3>
+            <p><strong>模拟竞价:</strong> {{ result.input_lists }}</p>
+            <p><strong>我方出价数量:</strong> {{ result.m_value }}</p>
+            <p><strong>推荐值:</strong> {{ result.recommended_bid }}</p>
+
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function () {
+        // Add a new row
+        $('#add-row').on('click', function () {
+            const newRow = `
+                <div class="input-group mb-2">
+                    <input type="number" name="min[]" step="0.0001" min="0" max="1" class="form-control" placeholder="最小值" required>
+                    <input type="number" name="max[]" step="0.0001" min="0" max="1" class="form-control" placeholder="最大值" required>
+                    <input type="number" name="num[]" min="0" class="form-control" placeholder="数量" required>
+                    <button type="button" class="btn btn-danger remove-row">Remove</button>
+                </div>`;
+            $('#lists-container').append(newRow);
+        });
+
+        // Remove a row
+        $('#lists-container').on('click', '.remove-row', function () {
+            $(this).closest('.input-group').remove();
+        });
+    });
+</script>
+{% endblock %}

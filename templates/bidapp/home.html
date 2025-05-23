@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}竞价模拟 - 主页{% endblock %}
+
+{% block content %}
+<div class="jumbotron">
+    <p class="lead">使用大数据智能模拟竞价-支持总价和清单模拟</p>
+    <hr class="my-4">
+</div>
+
+<div class="row gx-5">
+    <!-- 左侧排名 - 更窄的列宽 -->
+    <div class="col-md-2">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">中标次数排名</h5>
+            </div>
+            <div class="card-body p-2">
+                <div class="list-group" style="max-height: 500px; overflow-y: auto;">
+                    {% for company in success_ranking %}
+                    <div class="list-group-item py-1">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="badge bg-primary rounded-pill">{{ forloop.counter }}</span>
+                            <span class="small">{{ company.company_name }}</span>
+                            <span class="badge bg-success">{{ company.bid_count_success }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 中间功能区域 - 更宽的列宽 -->
+    <div class="col-md-8">
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">总价模拟器</h5>
+                        <p class="card-text">根据输入预估其他家竞价范围，就算我方最优控制价</p>
+                        <a href="{% url 'bid_optimizer' %}" class="btn btn-primary">打开总价模拟器</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">清单计算</h5>
+                        <p class="card-text">上传规定格式的Excel清单,计算每个细项报价浮动</p>
+                        <a href="{% url 'excel_processor' %}" class="btn btn-primary">打开清单模拟器</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧排名 - 更窄的列宽 -->
+    <div class="col-md-2">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="card-title mb-0">近三月投标次数排名</h5>
+            </div>
+            <div class="card-body p-2">
+                <div class="list-group" style="max-height: 500px; overflow-y: auto;">
+                    {% for company in total_ranking %}
+                    <div class="list-group-item py-1">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="badge bg-info rounded-pill">{{ forloop.counter }}</span>
+                            <span class="small">{{ company.company_name }}</span>
+                            <span class="badge bg-secondary">{{ company.bid_count }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

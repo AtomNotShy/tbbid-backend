@@ -1,0 +1,553 @@
+{% extends 'base.html' %}
+
+{% block title %}Excel处理器{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* 排序相关样式 */
+    .sort-controls {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+        border: 1px solid #dee2e6;
+    }
+
+    .sort-icon {
+        display: inline-block;
+        margin-left: 5px;
+        color: #0d6efd;
+    }
+
+    .sort-status {
+        margin-top: 10px;
+        padding: 8px 12px;
+        border-radius: 4px;
+        background-color: #e9ecef;
+        display: none;
+    }
+
+    /* 表格样式增强 */
+    #resultTable table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    #resultTable th {
+        position: sticky;
+        top: 0;
+        background-color: #f8f9fa;
+        z-index: 10;
+        border-bottom: 2px solid #dee2e6;
+        cursor: pointer;
+    }
+
+    #resultTable th:hover {
+        background-color: #e9ecef;
+    }
+
+    #resultTable th.sort-asc::after {
+        content: ' ↑';
+        color: #0d6efd;
+    }
+
+    #resultTable th.sort-desc::after {
+        content: ' ↓';
+        color: #0d6efd;
+    }
+
+    #resultTable tbody tr:hover {
+        background-color: #f1f8ff !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h2>清单价格计算器</h2>
+        <p>上传Excel文件并为每个报价组设置参数。</p>
+
+        <form method="post" enctype="multipart/form-data" class="mt-4">
+            {% csrf_token %}
+
+            <!-- Excel文件上传 -->
+            <div class="mb-3">
+                {{ excel_form.excel_file.label_tag }}
+                {{ excel_form.excel_file }}
+                <small class="form-text text-muted">{{ excel_form.excel_file.help_text }}</small>
+            </div>
+
+            <!-- NUM组容器 -->
+            <div id="num-groups-container">
+                <!-- 默认NUM组 -->
+                <div class="num-group mb-4 border p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4>报价组</h4>
+                        <button type="button" class="btn btn-danger btn-sm remove-num-group">删除报价组</button>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="row align-items-end">
+                            <div class="col-md-8">
+                                <label class="form-label">公司数量</label>
+                                {{ num_group_form.num_value }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">调整比例</label>
+                                <div style="width: 100px;">{{ num_group_form.reduc }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 区间容器 -->
+                    <div class="ranges-container">
+                        <div class="range-group mb-2">
+                            <div class="row">
+                                <div class="col-md-5">
+                                    <label class="form-label">清单项排名区间[1-100]%</label>
+                                    <div class="input-group">
+                                        <input type="number" placeholder="起始排名 1" name="start[0][]" class="form-control" min="1" step="0.01" required>
+                                        <input type="number" placeholder="截止排名 10" name="end[0][]" class="form-control" min="1" step="0.01" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label">报价变化区间范围[0-N]</label>
+                                    <div class="input-group">
+                                        <input type="number" placeholder="最小值 0.8" name="min_value[0][]" class="form-control"  min="0" step="0.01" required>
+                                        <input type="number" placeholder="最大值 1.2" name="max_value[0][]" class="form-control" min="0" step="0.01" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">&nbsp;</label>
+                                    <button type="button" class="btn btn-danger btn-sm d-block remove-range">删除区间</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-info btn-sm mt-2 add-range">添加区间</button>
+                </div>
+            </div>
+
+            <button type="button" class="btn btn-secondary mt-3" id="add-num-group">添加新的价格组</button>
+            <button type="submit" class="btn btn-primary mt-3">处理数据</button>
+        </form>
+
+        {% if processed_data %}
+        <div class="result-container mt-4">
+            {% if download_url %}
+            <div class="mb-3">
+                <a href="{{ download_url }}" class="btn btn-success">
+                    <i class="bi bi-download"></i> 下载处理后的Excel文件 - {{ original_filename }}
+                </a>
+            </div>
+            {% endif %}
+
+            <!-- 添加排序控制 -->
+            <div class="sort-controls mb-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-sort-down"></i> 数据排序控制</h5>
+                    <div>
+                        <small class="text-muted">提示: 点击表格头部也可以直接排序</small>
+                    </div>
+                </div>
+                <hr class="my-2">
+                <div class="row mt-3">
+                    <div class="col-md-4">
+                        <label class="form-label">排序列：</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-table"></i></span>
+                            <select id="sortColumn" class="form-select">
+                                <option value="">-- 选择列 --</option>
+                                <!-- 动态填充选项 -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">排序方向：</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-arrow-down-up"></i></span>
+                            <select id="sortDirection" class="form-select">
+                                <option value="asc">从小到大 ↑</option>
+                                <option value="desc">从大到小 ↓</option>
+                                <option value="none">原始顺序</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button id="applySort" class="btn btn-primary w-100">
+                            <i class="bi bi-arrow-down-up"></i> 应用排序
+                        </button>
+                    </div>
+                </div>
+                <div id="sortStatus" class="sort-status mt-2"></div>
+            </div>
+
+            <div id="resultTable">
+                {{ processed_data|safe }}
+            </div>
+        </div>
+
+        <!-- 添加排序脚本 -->
+        <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 初始化排序控件
+            initSortControls();
+
+            // 为表头添加点击排序功能
+            addTableHeaderSorting();
+        });
+
+        // 获取处理后的数据表格
+        function getProcessedDataTable() {
+            // 查找所有表格
+            const tables = document.querySelectorAll('#resultTable table');
+            if (!tables || tables.length === 0) return null;
+
+            // 如果只有一个表格，直接返回
+            if (tables.length === 1) return tables[0];
+
+            // 如果有多个表格，查找处理后的数据表格
+            // 定位处理后的数据表格（它应该在"处理后的数据"标题之后）
+            const headings = document.querySelectorAll('#resultTable h4');
+            for (let i = 0; i < headings.length; i++) {
+                if (headings[i].textContent.includes('处理后的数据')) {
+                    // 找到标题后的第一个表格
+                    const nextTable = headings[i].nextElementSibling;
+                    if (nextTable && nextTable.tagName === 'TABLE') {
+                        return nextTable;
+                    }
+                }
+            }
+
+            // 如果没有找到特定的表格，则返回第二个表格（假设第二个表格是处理后的数据表格）
+            if (tables.length >= 2) {
+                return tables[1];
+            }
+
+            // 如果上述方法都失败，返回第一个表格
+            return tables[0];
+        }
+
+        // 初始化排序控件
+        function initSortControls() {
+            const table = getProcessedDataTable();
+            if (!table) {
+                console.warn('找不到处理后的数据表格');
+                return;
+            }
+
+            const headers = Array.from(table.querySelectorAll('thead th'));
+            const sortColumnSelect = document.getElementById('sortColumn');
+
+            // 清空现有选项（保留第一个默认选项）
+            while (sortColumnSelect.options.length > 1) {
+                sortColumnSelect.remove(1);
+            }
+
+            // 添加所有列作为选项
+            headers.forEach(header => {
+                const text = header.textContent.trim();
+                // 跳过空列头
+                if (!text) return;
+
+                const option = document.createElement('option');
+                option.value = text;
+                option.textContent = text;
+
+                // 如果是占比列，默认选中
+                if (text === '占比') {
+                    option.selected = true;
+                }
+
+                sortColumnSelect.appendChild(option);
+            });
+
+            // 添加排序按钮事件
+            document.getElementById('applySort').addEventListener('click', function() {
+                sortTable();
+            });
+        }
+
+        // 为表头添加点击排序功能
+        function addTableHeaderSorting() {
+            const table = getProcessedDataTable();
+            if (!table) return;
+
+            const headers = Array.from(table.querySelectorAll('thead th'));
+
+            headers.forEach((header, index) => {
+                // 跳过空列头
+                if (!header.textContent.trim()) return;
+
+                header.style.cursor = 'pointer';
+                header.title = '点击排序';
+
+                header.addEventListener('click', function() {
+                    // 获取当前排序状态
+                    let currentDirection = 'none';
+                    if (this.classList.contains('sort-asc')) {
+                        currentDirection = 'asc';
+                    } else if (this.classList.contains('sort-desc')) {
+                        currentDirection = 'desc';
+                    }
+
+                    // 切换排序方向
+                    let newDirection;
+                    if (currentDirection === 'none' || currentDirection === 'desc') {
+                        newDirection = 'asc';
+                    } else {
+                        newDirection = 'desc';
+                    }
+
+                    // 更新排序控件
+                    document.getElementById('sortColumn').value = this.textContent.trim();
+                    document.getElementById('sortDirection').value = newDirection;
+
+                    // 执行排序
+                    sortTable();
+                });
+            });
+        }
+
+        // 执行表格排序
+        function sortTable() {
+            const table = getProcessedDataTable();
+            if (!table) {
+                showSortStatus('找不到处理后的数据表格', 'warning');
+                return;
+            }
+
+            const tbody = table.querySelector('tbody');
+            if (!tbody) {
+                showSortStatus('表格没有数据体', 'warning');
+                return;
+            }
+
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            if (rows.length === 0) {
+                showSortStatus('表格没有数据行', 'warning');
+                return;
+            }
+
+            // 获取排序列和方向
+            const sortColumn = document.getElementById('sortColumn').value;
+            const sortDirection = document.getElementById('sortDirection').value;
+
+            // 如果没有选择列，则退出
+            if (!sortColumn) {
+                showSortStatus('请选择要排序的列', 'warning');
+                return;
+            }
+
+            // 找到要排序的列的索引
+            const headers = Array.from(table.querySelectorAll('thead th'));
+            const columnIndex = headers.findIndex(th => th.textContent.trim() === sortColumn);
+
+            if (columnIndex === -1) {
+                showSortStatus(`找不到列: ${sortColumn}`, 'danger');
+                return;
+            }
+
+            // 检查列索引是否超出范围
+            if (columnIndex >= rows[0].cells.length) {
+                showSortStatus(`列索引超出范围: ${columnIndex}`, 'danger');
+                return;
+            }
+
+            // 清除所有表头的排序标记
+            headers.forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+            });
+
+            // 保存原始顺序（使用序号列或行索引）
+            const seqIndex = headers.findIndex(th => th.textContent.trim() === '序号');
+            const originalOrder = [];
+
+            if (seqIndex !== -1 && seqIndex < rows[0].cells.length) {
+                rows.forEach((row, idx) => {
+                    originalOrder.push({
+                        row: row,
+                        seq: parseInt(row.cells[seqIndex].textContent) || idx
+                    });
+                });
+            } else {
+                rows.forEach((row, idx) => {
+                    originalOrder.push({
+                        row: row,
+                        seq: idx
+                    });
+                });
+            }
+
+            try {
+                if (sortDirection === 'none') {
+                    // 恢复原始顺序
+                    if (seqIndex !== -1 && seqIndex < rows[0].cells.length) {
+                        rows.sort((a, b) => {
+                            const aValue = parseInt(a.cells[seqIndex].textContent) || 0;
+                            const bValue = parseInt(b.cells[seqIndex].textContent) || 0;
+                            return aValue - bValue;
+                        });
+                        showSortStatus('已恢复原始顺序', 'info');
+                    }
+                } else {
+                    // 按选定列排序
+                    rows.sort((a, b) => {
+                        try {
+                            // 获取单元格内容
+                            let aValue = a.cells[columnIndex] ? a.cells[columnIndex].textContent.trim() : '';
+                            let bValue = b.cells[columnIndex] ? b.cells[columnIndex].textContent.trim() : '';
+
+                            // 处理特殊字符，如百分比符号、货币符号等
+                            aValue = aValue.replace(/[\%\$\,]/g, '');
+                            bValue = bValue.replace(/[\%\$\,]/g, '');
+
+                            // 尝试将值解析为数字
+                            const aNum = parseFloat(aValue);
+                            const bNum = parseFloat(bValue);
+
+                            // 处理 NaN 值
+                            const aIsNaN = isNaN(aNum);
+                            const bIsNaN = isNaN(bNum);
+
+                            // 如果一个是 NaN，另一个不是，则 NaN 值放在最后
+                            if (aIsNaN && !bIsNaN) {
+                                return 1; // a 是 NaN，放在后面
+                            }
+                            if (!aIsNaN && bIsNaN) {
+                                return -1; // b 是 NaN，放在后面
+                            }
+                            if (aIsNaN && bIsNaN) {
+                                // 两个都是 NaN，按字符串比较
+                                return sortDirection === 'asc' ?
+                                    aValue.localeCompare(bValue, 'zh-CN') :
+                                    bValue.localeCompare(aValue, 'zh-CN');
+                            }
+
+                            // 如果两个值都是有效数字，则进行数字比较
+                            return sortDirection === 'asc' ? aNum - bNum : bNum - aNum;
+                        } catch (error) {
+                            console.error('排序时出错:', error);
+                            return 0; // 出错时保持原有顺序
+                        }
+                    });
+
+                    // 添加排序标记到表头
+                    headers[columnIndex].classList.add(sortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
+
+                    // 显示排序状态
+                    const directionText = sortDirection === 'asc' ? '从小到大' : '从大到小';
+                    showSortStatus(`已按 ${sortColumn} ${directionText} 排序`, 'success');
+                }
+
+                // 清空并重新填充表格
+                tbody.innerHTML = '';
+                rows.forEach(row => tbody.appendChild(row));
+
+                // 更新行的样式类（斑马纹等）
+                rows.forEach((row, index) => {
+                    row.classList.remove('odd', 'even');
+                    row.classList.add(index % 2 ? 'even' : 'odd');
+                });
+            } catch (error) {
+                console.error('排序过程中出错:', error);
+                showSortStatus('排序过程中出错，请检查控制台', 'danger');
+            }
+        }
+
+        // 显示排序状态
+        function showSortStatus(message, type) {
+            const statusElement = document.getElementById('sortStatus');
+            if (!statusElement) return;
+
+            // 设置消息和样式
+            statusElement.textContent = message;
+            statusElement.className = `sort-status alert alert-${type}`;
+            statusElement.style.display = 'block';
+
+            // 5秒后隐藏
+            setTimeout(() => {
+                statusElement.style.display = 'none';
+            }, 5000);
+        }
+        </script>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    let groupCounter = 0;
+
+    // 添加新的NUM组
+    $('#add-num-group').click(function() {
+        groupCounter++;
+        const newGroup = $('#num-groups-container .num-group').first().clone();
+
+        // 更新新组中的字段名称
+        newGroup.find('input[name="num_value"]').attr('name', 'num_value');
+        newGroup.find('input[name="reduc"]').attr('name', 'reduc');  // 更新reduc字段
+        newGroup.find('input[name^="start"]').attr('name', `start[${groupCounter}][]`);
+        newGroup.find('input[name^="end"]').attr('name', `end[${groupCounter}][]`);
+        newGroup.find('input[name^="min_value"]').attr('name', `min_value[${groupCounter}][]`);
+        newGroup.find('input[name^="max_value"]').attr('name', `max_value[${groupCounter}][]`);
+
+        // 清除输入值
+        newGroup.find('input').val('');
+        $('#num-groups-container').append(newGroup);
+    });
+
+    // 验证reduc值
+    $(document).on('input', 'input[name="reduc"]', function() {
+        let value = parseFloat(this.value);
+        if (value < 0) this.value = 0;
+        if (value > 1) this.value = 1;
+    });
+
+    // 添加新的范围
+    $(document).on('click', '.add-range', function() {
+        const numGroup = $(this).closest('.num-group');
+        const groupIndex = numGroup.index();
+        const rangeTemplate = $('.range-group').first().clone();
+
+        // 更新范围字段的名称
+        rangeTemplate.find('input[name^="start"]').attr('name', `start[${groupIndex}][]`);
+        rangeTemplate.find('input[name^="end"]').attr('name', `end[${groupIndex}][]`);
+        rangeTemplate.find('input[name^="min_value"]').attr('name', `min_value[${groupIndex}][]`);
+        rangeTemplate.find('input[name^="max_value"]').attr('name', `max_value[${groupIndex}][]`);
+
+        // 清除输入值
+        rangeTemplate.find('input').val('');
+        numGroup.find('.ranges-container').append(rangeTemplate);
+    });
+
+    // 删除NUM组
+    $(document).on('click', '.remove-num-group', function() {
+        if ($('.num-group').length > 1) {
+            $(this).closest('.num-group').remove();
+        } else {
+            alert('至少需要保留一个NUM组！');
+        }
+    });
+
+    // 删除范围
+    $(document).on('click', '.remove-range', function() {
+        if ($(this).closest('.ranges-container').find('.range-group').length > 1) {
+            $(this).closest('.range-group').remove();
+        } else {
+            alert('至少需要保留一个区间！');
+        }
+    });
+});
+</script>
+{% endblock %}
+
+
+
+
+
+
