@@ -19,14 +19,9 @@ jobs:
           username: ${{ secrets.ALIYUN_USER }}
           key: ${{ secrets.ALIYUN_SSH_KEY }}
           script: |
-            # 1. 检查代码目录是否存在，没有则克隆项目
-            if [ ! -d "/home/tbbid/backend/.git" ]; then
-              git clone https://github.com/AtomNotShy/tbbid-backend.git /home/tbbid/backend
-            fi
-
-            # 2. 进入代码目录，拉取最新代码
             cd /home/tbbid/backend
-            git pull origin main
+            pwd
+            git pull
             source .venv/bin/activate
             uv pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
             # 6. 运行数据库迁移
