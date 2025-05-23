@@ -20,11 +20,8 @@ jobs:
           key: ${{ secrets.ALIYUN_SSH_KEY }}
           script: |
             cd /home/tbbid/backend
-            pwd
-            git pull
+            git pull origin main
             source .venv/bin/activate
             uv pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
-            # 6. 运行数据库迁移
             python3 manage.py migrate
-            # 7. 重启后端服务（使用 supervisor）
             sudo supervisorctl restart backend
