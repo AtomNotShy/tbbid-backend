@@ -6,9 +6,11 @@ from django.contrib.auth import get_user_model
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# TODO: 将密钥等敏感元素放入环境变量
+
 SECRET_KEY = 'django-insecure-h7d3f8h3f8h38fh38fh38fh38fh38fh38fh38fh38fh38fh38f'
-DEBUG = True
-ALLOWED_HOSTS = ['192.168.5.114','tbbid.iepose.cn','127.0.0.1','tbbid.top']
+DEBUG = False
+ALLOWED_HOSTS = ['192.168.5.114','tbbid.iepose.cn','127.0.0.1','tbbid.top','www.tbbid.top']
 
 CSRF_TRUSTED_ORIGINS = [
     'https://192.168.5.114:8080',
@@ -130,8 +132,5 @@ SIMPLE_JWT = {
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
     'TOKEN_TYPE_CLAIM': 'token_type',
 }
-
-CORS_ALLOW_ALL_ORIGINS = True # only for development
-CORS_ALLOW_CREDENTIALS = True
 
 AUTH_USER_MODEL = 'bidapp.User'
