@@ -1,16 +1,25 @@
 import os
 from pathlib import Path
 
-from django.contrib import staticfiles
-from django.contrib.auth import get_user_model
+# 开发环境可以使用 dotenv
+if os.getenv('DJANGO_ENV') == 'development':
+    from dotenv import load_dotenv
+    load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# TODO: 将密钥等敏感元素放入环境变量
+# 必须的环境变量检查
+required_env_vars = ['SECRET_KEY', 'DB_PASSWORD']
+if not all(os.getenv(var) for var in required_env_vars):
+    if os.getenv('DJANGO_ENV') != 'development':
+        raise ValueError(f"Missing required environment variables: {required_env_vars}")
 
-SECRET_KEY = 'django-insecure-h7d3f8h3f8h38fh38fh38fh38fh38fh38fh38fh38fh38fh38f'
-DEBUG = False
-ALLOWED_HOSTS = ['192.168.5.114','tbbid.iepose.cn','127.0.0.1','tbbid.top','www.tbbid.top']
+SECRET_KEY = os.getenv('SECRET_KEY')
+DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
+
+# 允许的主机配置
+allowed_hosts_str = os.getenv('ALLOWED_HOSTS', '127.0.0.1')
+ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_str.split(',')]
 
 CSRF_TRUSTED_ORIGINS = [
     'https://192.168.5.114:8080',
@@ -68,11 +77,12 @@ WSGI_APPLICATION = 'bidoptimizer.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'data',
-        'USER': 'atom',
-        'PASSWORD': 'qwerasdf',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'NAME': os.getenv('DB_NAME', 'data'),
+        'USER': os.getenv('DB_USER', 'atom'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': os.getenv('DB_HOST', 'localhost'),
+        'PORT': os.getenv('DB_PORT', '5432'),
+        'CONN_MAX_AGE': 600 if not DEBUG else 0,
     }
 }
 
@@ -106,7 +116,12 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CORS_ALLOW_ALL_ORIGINS = True  # 开发环境允许所有跨域
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGINS = [
+    "https://tbbid.iepose.cn",
+    "https://tbbid.top",
+    "https://www.tbbid.top",
+]
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -169,3 +184,14 @@ LOGGING = {
         }
     }
 }
+
+# 生产环境额外安全配置
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_BROWSER_XSS_FILTER = True
+    X_FRAME_OPTIONS = 'DENY'
