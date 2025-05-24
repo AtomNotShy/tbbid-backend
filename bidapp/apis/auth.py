@@ -9,9 +9,10 @@ from django.utils import timezone
 from datetime import timedelta
 from ..serializers import UserSerializer
 from django.contrib.auth import get_user_model
+import logging
 
+logger = logging.getLogger(__name__)
 User = get_user_model()
-
 
 @api_view(['POST'])
 def send_sms_code(request):
@@ -21,6 +22,7 @@ def send_sms_code(request):
         return Response({'error': '手机号不能为空'}, status=400)
     
     code = str(random.randint(1000, 9999))
+    logger.info(f"验证码详细信息 - 手机号: {phone}, 验证码: {code}, 有效期: 5分钟")
     print(f"发送验证码 {code} 到手机号 {phone}")  # 实际环境应替换为真正的短信发送
     cache.set(f'sms_code_{phone}', code, timeout=300)  # 5分钟有效
     
@@ -65,6 +67,8 @@ def register(request):
         membership_start=timezone.now(),
         membership_end=timezone.now() + timedelta(days=365)
     )
+    logger.info(f"新用户注册成功 - 用户名: {username}, 公司: {company}, 手机号: {phone}")
+    logger.debug(f"用户详细信息 - ID: {user.id}, 会员等级: {user.membership_level}")
     return Response({'msg': '注册成功'})
 
 
