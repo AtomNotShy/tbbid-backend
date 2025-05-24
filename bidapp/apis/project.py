@@ -57,10 +57,10 @@ def project_detail(request, project_id):
 def today_update_count(request):
     """获取今日更新数量"""
     from django.utils import timezone
-    from ..models import Bid, BidRank
-    
+    from ..models import Bid, BidRank,BidSection
     today = timezone.now().date()
-    project_count = Project.objects.filter(time_show__date=today).count()
+
+    project_count = BidSection.objects.filter(bid_open_time__date=today).count()
     bid_count = Bid.objects.filter(bid_open_time__date=today).count()
     bid_result_count = BidRank.objects.filter(open_time__date=today).count()
     
