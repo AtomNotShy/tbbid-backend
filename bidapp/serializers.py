@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Project, Bid, BidRank, BidSection, CompanyInfo, EmployeeInfo, User,WinnerBidInfo
+from .models import Project, Bid, BidRank, BidSection, CompanyInfo, EmployeeInfo, User,WinnerBidInfo, PersonPerformance
 
 class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
@@ -52,4 +52,9 @@ class UserSerializer(serializers.ModelSerializer):
 class WinnerBidInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = WinnerBidInfo
+        fields = '__all__'
+
+class PersonPerformanceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PersonPerformance
         fields = '__all__'

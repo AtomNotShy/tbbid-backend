@@ -2,8 +2,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db import models
-from ..models import CompanyInfo, EmployeeInfo, Bid, BidRank, WinnerBidInfo
-from ..serializers import CompanyInfoSerializer, EmployeeInfoSerializer, BidSerializer, BidRankSerializer, WinnerBidInfoSerializer
+from ..models import CompanyInfo, EmployeeInfo, Bid, BidRank, WinnerBidInfo, PersonPerformance
+from ..serializers import CompanyInfoSerializer, EmployeeInfoSerializer, BidSerializer, BidRankSerializer, WinnerBidInfoSerializer, PersonPerformanceSerializer
 
 
 @api_view(['GET'])
@@ -120,4 +120,24 @@ def achievement_detail(request, pk):
         return Response({'detail': 'Not found.'}, status=404)
     serializer = WinnerBidInfoSerializer(achievement)
     return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def company_manager_performances(request):
+    """获取公司项目经理业绩（person_performance表）"""
+    corp_code = request.GET.get('corp_code', '').strip()
+    if not corp_code:
+        return Response({'results': [], 'count': 0})
+
+    page = int(request.GET.get('page', 1))
+    PAGE_SIZE = 20
+    
+    # 查询该公司的项目经理业绩记录
+    performances = PersonPerformance.objects.filter(corp_code=corp_code)
+    total = performances.count()
+    performances = performances.order_by('-updated_at')[(page-1)*PAGE_SIZE:page*PAGE_SIZE]
+    serializer = PersonPerformanceSerializer(performances, many=True)
+
+    return Response({'results': serializer.data, 'count': total})
 
