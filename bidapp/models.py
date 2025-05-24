@@ -124,7 +124,7 @@ class CompanyInfo(models.Model):
 
 class EmployeeInfo(models.Model):
     name = models.CharField()
-    corp_code = models.ForeignKey(CompanyInfo, models.DO_NOTHING, db_column='corp_code', to_field='corp_code')
+    corp_code = models.ForeignKey(CompanyInfo, models.CASCADE, db_column='corp_code', to_field='corp_code')
     role = models.CharField(blank=True, null=True)
     cert_code = models.CharField(unique=True, blank=True, null=True)
     major = ArrayField(
@@ -133,6 +133,8 @@ class EmployeeInfo(models.Model):
         null=True
     )
     valid_date = models.CharField(blank=True, null=True)
+    birth_date = models.DateTimeField(blank=True, null=True)
+    id_number = models.CharField(max_length = 18, blank=True, null=True)
     created_at = models.DateTimeField(blank=True, null=True)
     updated_at = models.DateTimeField(blank=True, null=True)
 
@@ -140,6 +142,28 @@ class EmployeeInfo(models.Model):
         managed = False
         db_table = 'employee_info'
 
+
+class PersonPerformance(models.Model):
+    """个人业绩信息"""
+    name = models.CharField(max_length=255, verbose_name='姓名')
+    corp_code = models.ForeignKey(CompanyInfo, models.CASCADE, db_column='corp_code', to_field='corp_code')
+    corp_name = models.CharField(max_length=255, verbose_name='企业名称')
+    project_name = models.CharField(max_length=255, verbose_name='项目名称')
+    data_level = models.CharField(max_length=50, verbose_name='数据级别')
+    role = models.CharField(max_length=100, verbose_name='角色')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
+
+    class Meta:
+        db_table = 'person_performance'
+        verbose_name = '个人业绩'
+        verbose_name_plural = '个人业绩'
+
+    def __repr__(self):
+        return f"PersonPerformance(name='{self.name}', corp_code='{self.corp_code}')"
+
+    def __str__(self):
+        return f"{self.name} - {self.corp_name}"
+    
 
 class ExcelProcessing(models.Model):
     """用于存储处理过的Excel文件信息"""
